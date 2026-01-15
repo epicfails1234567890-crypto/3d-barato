@@ -1,0 +1,219 @@
+<div id="fps" class="outlined" style="position:absolute;z-index:1;font-size:50px;background-color:black;color:rgb(0,255,0);font-family:consolas">FPS: 60</div>
+<div id="hud" class="outlined" style="position:absolute;bottom:0px;z-index:1;font-size:50px;background-color:black;color:rgb(0,255,0);font-family:consolas">FPS: 60</div>
+<canvas id="c"style="position:absolute;z-index:0"></canvas>
+<script>
+let lastTime = performance.now();
+let frameCount = 0;
+let fpsDisplay = document.getElementById('fps');
+
+function updateFPS() {
+  const currentTime = performance.now();
+  frameCount++;
+
+  // Calculate FPS every second
+  if (currentTime - lastTime >= 1000) {
+    const fps = frameCount;
+    fpsDisplay.textContent = `FPS: ${fps}`;
+    frameCount = 0;
+    lastTime = currentTime;
+  }
+
+  requestAnimationFrame(updateFPS);
+}
+
+// Start the FPS counter
+updateFPS();
+</script>
+<script>
+
+max=(a,b)=>{
+  return Math.max(a,b)
+}
+min=(a,b)=>{
+  return Math.min(a,b)
+}
+floor=(x)=>{
+  return Math.floor(x)
+}
+pi=()=>{
+  return Math.PI
+}
+rnd=()=>{
+  return Math.random()
+}
+sin=(a)=>{
+  return Math.sin(a)
+}
+cos=(a)=>{
+  return Math.cos(a)
+}
+clamp=(min1,val1,max1)=>{
+  return min(max(val1,min1),max1)
+}
+clampColor=(val1)=>{
+  return clamp(0,val1,255)
+}
+rndColor=()=>{
+  return clampColor(rnd()*255)
+}
+
+m=[]
+onmousedown=onmouseup=(e)=>{
+  m[e.button=e.type="mousedown"]
+  if(
+    document.pointerLockElement===c
+    ||
+    document.mozPointerLockElement===c
+  ){
+    //DO NOTHING
+  }else{
+    document.getElementById("c").requestPointerLock()
+  }
+}
+onmousemove=(event)=>{
+  if(
+    document.pointerLockElement===c
+    ||
+    document.mozPointerLockElement===c
+  ){
+    player.rot.x+=0.005 * event.movementX
+    player.rot.y-=0.005 * event.movementY
+    player.rot.y=clamp(-1.6,player.rot.y,1.6)
+  }
+}
+
+k=[]
+onkeydown=onkeyup=(e)=>{k[e.keyCode]=e.type=="keydown"}
+player={
+  pos:{x:0,y:2,z:0},
+  rot:{x:0,y:0}
+}
+
+map=[]
+
+mapSize=10
+for(x=0;x<mapSize;x++){
+  map[x]=[]
+  for(y=0;y<mapSize;y++){
+    map[x][y]=[]
+    for(z=0;z<mapSize;z++){
+      map[x][y][z]=floor(rnd()*2)
+    }
+  }
+}
+
+placeFree=(x,y,z)=>{
+  x=floor(x)
+  y=floor(y)
+  z=floor(z)
+  if (x < 0 || y < 0 || z < 0 ||
+      x >= map.length ||
+      y >= map[0].length ||
+      z >= map[0][0].length) {
+    return true; // fuera del mapa
+  }
+  return map[x][y][z]!=1
+}
+
+shotRay = (x0,y0,z0,angleX,angleY) => {
+  dist = -0.5;
+  while(dist < 10){
+    sinX = sin(angleX);
+    cosX = cos(angleX);
+    sinY = sin(angleY);
+    cosY = cos(angleY);
+
+    dx1 = sinX * cosY;
+    dy1 = sinY;
+    dz1 = cosX * cosY;
+
+    dx0 = floor(dist*dx1 + x0);
+    dy0 = floor(dist*dy1 + y0);
+    dz0 = floor(dist*dz1 + z0);
+
+    // Aquí la condición correcta:
+    if (!placeFree(dx0,dy0,dz0)) {
+      return dist; // chocó con un bloque
+    }
+    dist += 0.1;
+  }
+  return 10; // nada encontrado
+}
+
+render=()=>{
+  requestAnimationFrame(render)
+  c.width=innerWidth
+  c.height=innerHeight
+
+  ctx.fillStyle = "rgb(0,127,255)"
+  ctx.fillRect(0, 0, innerWidth, innerHeight)
+
+  PxSize=32
+
+  for (x = 0; x < innerWidth; x += PxSize) {
+    for (y = 0; y < innerHeight; y += PxSize) {
+      currDist=shotRay(
+        player.pos.x,
+        player.pos.y,
+        player.pos.z,
+        player.rot.x+x/1000-innerWidth/2000,
+        player.rot.y-y/1000-innerHeight/2000
+      )
+      prox=2*currDist**-1
+      ctx.globalAlpha = prox
+      ctx.fillStyle = "rgb(0,255,0)"
+      ctx.fillRect(x, y, PxSize, PxSize)
+    }
+  }
+
+  hud.innerHTML=
+  "x:"+floor(player.pos.x)+
+  " y:"+floor(player.pos.y)+
+  " z:"+floor(player.pos.z)+
+  " RotX:"+floor(player.rot.x*1000/16)+
+  " RotY:"+floor(-player.rot.y*1000/16)+"%"
+
+  walkSpeed=0.1
+  
+  camCos=Math.cos(player.rot.x)
+  camSin=Math.sin(player.rot.x)
+
+  if(k[65]){//A
+    dx=-walkSpeed * camCos
+    dz=walkSpeed * camSin
+    if(placeFree(player.pos.x+dx,0,player.pos.z)==true){player.pos.x+=dx}
+    if(placeFree(player.pos.z+dz,0,player.pos.x)==true){player.pos.z+=dz}
+  }
+  if(k[68]){//D
+    dx=walkSpeed * camCos
+    dz=-walkSpeed * camSin
+    if(placeFree(player.pos.x+dx,0,player.pos.z)==true){player.pos.x+=dx}
+    if(placeFree(player.pos.z+dz,0,player.pos.x)==true){player.pos.z+=dz}
+  }
+
+  if(k[87]){//W
+    dx=walkSpeed * camSin
+    dz=walkSpeed * camCos
+    if(placeFree(player.pos.x+dx,0,player.pos.z)==true){player.pos.x+=dx}
+    if(placeFree(player.pos.z+dz,0,player.pos.x)==true){player.pos.z+=dz}
+  }
+  if(k[83]){//S
+    dx=-walkSpeed * camSin
+    dz=-walkSpeed * camCos
+    if(placeFree(player.pos.x+dx,0,player.pos.z)==true){player.pos.x+=dx}
+    if(placeFree(player.pos.z+dz,0,player.pos.x)==true){player.pos.z+=dz}
+  }
+  if(k[32]){
+    if(placeFree(player.pos.x,player.pos.y+walkSpeed,player.pos.z)==true){player.pos.y += walkSpeed}
+  }
+  if(k[81]){
+    if(placeFree(player.pos.x,player.pos.y-walkSpeed,player.pos.z)==true){player.pos.y -= walkSpeed}
+  }
+}
+init=()=>{
+  document.body.style.margin=0
+  ctx=c.getContext("2d")
+  render()
+}
+onload=()=>init()
+</script>
